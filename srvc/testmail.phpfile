@@ -1,0 +1,89 @@
+<?php
+include('cloudconnect.php');
+include('config.php');
+include('encrypt.php');
+
+$cmd = $_POST['cmd'];
+
+if (isset($_POST['name']))
+    $name = $_POST['name'];
+else
+    $name = '';
+
+if (isset($_POST['email']))    
+    $email = $_POST['email'];
+else
+    $email = '';
+    
+if (isset($_POST['password']))
+    $password = $_POST['password'];
+else
+    $password = '';
+
+// Log input parameters
+if ($debug)
+{
+    if ($handle = fopen("cloud_srvc_log.txt", "a+"))
+    {
+        date_default_timezone_set('UTC');
+        $data = "request,". date(DATE_RFC822, $_SERVER['REQUEST_TIME']) . "," . $_SERVER['REMOTE_ADDR'] . "," 
+    . $_SERVER['REMOTE_HOST'] . "," . $cmd . "," . $email . "," .$password ."\n";
+        fputs($handle, $data);
+        fflush($handle);
+        fclose($handle);
+    }
+}
+
+function sendEmail($to, $subject, $message)
+{
+    require("config.php");
+    if ($debug)
+    {
+        if ($handle = fopen("mail.txt", "a+"))
+        {
+            fputs($handle, $to . "\r\n");
+            fputs($handle, $subject . "\r\n");
+            fputs($handle, $message . "\r\n");
+            fflush($handle);
+            fclose($handle);
+        }
+        
+        return;
+    }
+
+	require 'phpmailer\PHPMailerAutoload.php';
+
+	$mail = new PHPMailer;
+	$mail->SMTPDebug = 3;                               			 // Disable verbose debug output
+	$mail->isSMTP();                                     			 // Set mailer to use SMTP
+	$mail->Host = 'dedrelay.secureserver.net';  					 // Specify main and backup SMTP servers
+	$mail->SMTPAuth = false;                              			 // Disable SMTP authentication
+
+	$mail->From = 'support@jqwidgets.com';
+	$mail->FromName = 'jQWidgets Support';
+	$mail->addAddress($to);     							         // Add a recipient
+	$mail->addReplyTo('support@jqwidgets.com', 'jQWidgets Support');
+	$mail->isHTML(false);             			                     // Set email format to plain text
+
+	$mail->Subject = $subject;
+	$mail->Body    = $message;
+
+	$mail->send();
+}
+
+function sendMailConfirmation($uname, $uemail, $action) {
+    require("config.php");
+    
+    $vlink = $baseUrl . '/confirm/?req=' . urlencode(encryptString($uemail, $cryptKey, $salt));
+
+    $to      = $uemail;
+    $subject = "Welcome to " . $productName . "! Let's get started";
+    $message = "Hi " . $uname . ",\r\n\r\nWelcome to " . $productName . "!\r\n\r\nTo verify your email please click the link below:\r\n\r\n" . $vlink;
+    $message = $message . "\r\n\r\nThank you,\r\n" . $teamSignature . "\r\n" . $teamSignatureUrl;
+    
+    sendEmail($to, $subject, $message); 
+} 
+
+sendEmail("info@jqwidgets.com", "test", "test");
+
+?>
